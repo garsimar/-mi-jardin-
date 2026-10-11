@@ -1,0 +1,11 @@
+{
+  "name": "Mi Jardín — Negocio",
+  "short_name": "Mi Jardín",
+  "description": "Clientes, presupuestos, precios y prospectos para negocios de jardinería.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f8f5",
+  "theme_color": "#2f7d4a",
+  "lang": "es",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f7d4a">
+<title>Mi Jardín — Negocio</title>
+<style>
+:root{--g:#2f7d4a;--g2:#5ca66b;--bg:#f5f8f5;--card:#fff;--ink:#193325;--muted:#6b7b70;--line:#dce7df;--gold:#d99b2b;--red:#c94b4b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,var(--g),var(--g2));color:white;padding:24px 18px 18px}
+header .brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}header .brand-logo{width:88px;height:72px;object-fit:contain;border-radius:10px;background:#061509}header h1{margin:0;font-size:28px}header p{margin:5px 0 18px;opacity:.9}
+.tabs{display:flex;gap:8px;overflow:auto}.tab{background:#ffffff20;color:white;border:1px solid #ffffff35;padding:10px 14px;border-radius:14px;font-weight:700;white-space:nowrap}.tab.active{background:white;color:var(--g)}
+main{max-width:900px;margin:auto;padding:18px}.view{display:none}.view.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:white;padding:15px;border-radius:17px;box-shadow:0 3px 12px #19332510}.stat b{display:block;font-size:22px}.stat span{color:var(--muted);font-size:12px}
+.title{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px}.title h2{margin:0;font-size:20px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:10px;box-shadow:0 3px 14px #1933250c}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.muted{color:var(--muted);font-size:13px}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer}.primary{background:var(--g);color:#fff}.secondary{background:#edf5ee;color:var(--g)}.danger{background:#fff0f0;color:var(--red)}
+.badge{font-size:12px;padding:5px 9px;border-radius:20px;background:#eaf5ed;color:var(--g);font-weight:700}.badge.gold{background:#fff4dd;color:#9a6813}
+.list-empty{text-align:center;padding:28px;color:var(--muted);background:white;border-radius:18px}
+label{display:block;font-size:13px;font-weight:700;margin:11px 0 5px}input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;font:inherit}textarea{min-height:80px;resize:vertical}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:flex-end;justify-content:center;z-index:10}.modal.open{display:flex}.sheet{background:white;width:min(760px,100%);max-height:92vh;overflow:auto;border-radius:25px 25px 0 0;padding:20px}.actions{display:flex;gap:9px;margin-top:17px}.actions button{flex:1}
+.price{font-size:19px;font-weight:800}.service{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}.service:last-child{border-bottom:0}
+.lead{border-left:4px solid var(--g)}.lead.new{border-left-color:var(--gold)}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+</head>
+<body>
+<header>
+<div class="brand"><img class="brand-logo" src="logo.png" alt="Logotipo de Landscaping"/><div><h1>Mi Jardín</h1><p>Plantas + presupuestos + clientes</p></div></div>
+<div class="row" style="margin-top:4px"><span id="syncStatus" class="badge" style="background:#ffffff22;color:white">☁️ Solo en este dispositivo</span><button class="tab" onclick="openAccount()" id="accountBtn">☁️ Cuenta</button></div>
+<div class="tabs">
+<button class="tab active" onclick="show('inicio',this)">Inicio</button>
+<button class="tab" onclick="show('presupuestos',this)">Presupuestos</button>
+<button class="tab" onclick="show('precios',this)">Precios</button>
+<button class="tab" onclick="show('clientes',this)">Clientes</button>
+<button class="tab" onclick="show('prospectos',this)">Nuevos clientes</button>
+</div>
+</header>
+
+<main>
+<section id="inicio" class="view active">
+<div class="stats">
+<div class="stat"><b id="statQuotes">$0</b><span>Presupuestos enviados</span></div>
+<div class="stat"><b id="statClients">0</b><span>Clientes</span></div>
+<div class="stat"><b id="statLeads">0</b><span>Prospectos</span></div>
+</div>
+<div class="title"><h2>Acciones rápidas</h2><button class="secondary" onclick="openBusiness()">⚙️ Negocio</button></div>
+<div class="card">
+<div class="row"><div><b>Crear presupuesto</b><div class="muted">Añade servicios, cantidades y tu margen.</div></div><button class="primary" onclick="openQuote()">＋ Crear</button></div>
+</div>
+<div class="card">
+<div class="row"><div><b>Registrar cliente</b><div class="muted">Guarda contacto y dirección.</div></div><button class="secondary" onclick="openClient()">＋ Cliente</button></div>
+</div>
+<div class="title"><h2>Cómo conseguir clientes</h2></div>
+<div class="card"><b>📍 Perfil local</b><p class="muted">Publica tus servicios, fotos y zonas atendidas. Pide una reseña después de cada trabajo.</p></div>
+<div class="card"><b>📣 Oferta para nuevos clientes</b><p class="muted">Crea una promoción clara, por ejemplo: “Evaluación de jardín + presupuesto sin compromiso”.</p></div>
+</section>
+
+<section id="precios" class="view">
+<div class="title"><h2>Catálogo de precios</h2><button class="primary" onclick="openPrice()">＋ Servicio</button></div>
+<p class="muted">Son tus precios. Puedes cambiarlos cuando quieras.</p>
+<div id="priceList"></div>
+</section>
+
+<section id="presupuestos" class="view">
+<div class="title"><h2>Presupuestos</h2><button class="primary" onclick="openQuote()">＋ Nuevo</button></div>
+<div id="quoteList"></div>
+</section>
+
+<section id="clientes" class="view">
+<div class="title"><h2>Clientes</h2><button class="primary" onclick="openClient()">＋ Nuevo</button></div>
+<div id="clientList"></div>
+</section>
+
+<section id="prospectos" class="view">
+<div class="title"><h2>Nuevos clientes</h2><button class="primary" onclick="openLead()">＋ Prospecto</button></div>
+<div class="card"><b>🔎 Encontrar posibles clientes</b><p class="muted">Busca negocios y propiedades en directorios públicos. Elige una zona y abre resultados en Google Maps; contacta respetando las reglas locales y las preferencias de cada persona.</p><label>Ciudad o código postal</label><input id="leadArea" placeholder="Ej. Sacramento, CA"><label>Tipo de búsqueda</label><select id="leadSearchType"><option value="residential landscaping">Casas y servicios de jardinería</option><option value="property managers">Administradores de propiedades</option><option value="HOA communities">Comunidades residenciales / HOA</option><option value="commercial properties">Propiedades comerciales</option><option value="nurseries garden centers">Viveros y centros de jardinería</option></select><div class="actions"><button class="primary" onclick="searchLeads()">Buscar en Google Maps</button><button class="secondary" onclick="searchLocalAds()">Ideas para anunciarme</button></div></div>
+<div class="card"><b>🎯 Seguimiento de prospectos</b><p class="muted">Guarda personas que te contacten desde recomendaciones, redes, anuncios o tu formulario web y cambia su estado hasta cerrar el trabajo.</p></div>
+<div id="leadList"></div>
+</section>
+</main>
+
+<div class="modal" id="modal"><div class="sheet"><div class="row"><h2 id="modalTitle">Nuevo</h2><button class="secondary" onclick="closeModal()">Cerrar</button></div><div id="modalBody"></div></div></div>
+
+<script>
+const key='miJardinBiz';
+let data=JSON.parse(localStorage.getItem(key)||'null')||{
+ prices:[
+  {name:'Corte de césped',unit:'visita',price:45},
+  {name:'Limpieza de jardín',unit:'hora',price:55},
+  {name:'Poda de arbustos',unit:'hora',price:60},
+  {name:'Plantación',unit:'planta',price:18},
+  {name:'Mulch',unit:'yarda³',price:75}
+ ],quotes:[],clients:[],leads:[],business:{name:'Mi Jardín',phone:'',email:'',address:'',tax:0}
+};
+function save(){localStorage.setItem(key,JSON.stringify(data));render(); cloudSave().catch(()=>{})}
+let cloudClient=null, currentUser=null, cloudBusy=false;
+function cloudConfigured(){return !!(window.MI_JARDIN_CONFIG?.supabaseUrl && window.MI_JARDIN_CONFIG?.supabaseAnonKey && !window.MI_JARDIN_CONFIG.supabaseUrl.includes('TU_'))}
+function setSyncStatus(text,ok=false){const el=document.getElementById('syncStatus');if(!el)return;el.textContent=text;el.style.background=ok?'#ffffff33':'#ffffff22'}
+async function initCloud(){
+ if(!cloudConfigured()){setSyncStatus('☁️ Configura la nube');return}
+ cloudClient=window.supabase.createClient(MI_JARDIN_CONFIG.supabaseUrl,MI_JARDIN_CONFIG.supabaseAnonKey);
+ const {data:{session}}=await cloudClient.auth.getSession();
+ if(session) await onSignedIn(session.user);
+ cloudClient.auth.onAuthStateChange((_event,session)=>{if(session) onSignedIn(session.user);else onSignedOut()});
+}
+async function onSignedIn(user){currentUser=user;setSyncStatus('☁️ Sincronizando…');document.getElementById('accountBtn').textContent='☁️ '+(user.email||'Cuenta');
+ const {data:row,error}=await cloudClient.from('app_data').select('data').eq('user_id',user.id).maybeSingle();
+ if(error){setSyncStatus('⚠️ Error de nube');return}
+ if(row?.data){data={...data,...row.data};localStorage.setItem(key,JSON.stringify(data));render();setSyncStatus('☁️ Sincronizado',true)}
+ else {await cloudSave();setSyncStatus('☁️ Sincronizado',true)}
+}
+function onSignedOut(){currentUser=null;document.getElementById('accountBtn').textContent='☁️ Cuenta';setSyncStatus(cloudConfigured()?'☁️ Inicia sesión':'☁️ Configura la nube')}
+async function cloudSave(){if(!cloudClient||!currentUser||cloudBusy)return;cloudBusy=true;try{const {error}=await cloudClient.from('app_data').upsert({user_id:currentUser.id,data,updated_at:new Date().toISOString()},{onConflict:'user_id'});setSyncStatus(error?'⚠️ No sincronizado':'☁️ Sincronizado',!error)}finally{cloudBusy=false}}
+function openAccount(){
+ if(currentUser){openModal('Cuenta',`<p class="muted">Sesión iniciada como <b>${esc(currentUser.email||'')}</b>.</p><div class="actions"><button class="danger" onclick="signOutCloud()">Cerrar sesión</button></div>`);return}
+ if(!cloudConfigured()){openModal('Configurar nube',`<p class="muted">La app ya está preparada para sincronizarse con Supabase. Completa <b>www/config.js</b> con la URL y la clave pública de tu proyecto.</p><div class="actions"><button class="secondary" onclick="closeModal()">Cerrar</button></div>`);return}
+ openModal('Cuenta y sincronización',`<label>Email</label><input id="authEmail" type="email" placeholder="tu@email.com"><label>Contraseña</label><input id="authPassword" type="password" placeholder="Mínimo 6 caracteres"><div class="actions"><button class="primary" onclick="signInCloud()">Iniciar sesión</button><button class="secondary" onclick="signUpCloud()">Crear cuenta</button></div><p class="muted">Tus clientes, precios, prospectos y presupuestos se sincronizarán entre tus dispositivos.</p>`)}
+async function signInCloud(){const email=authEmail.value.trim(),password=authPassword.value;if(!email||!password)return alert('Escribe email y contraseña.');const {error}=await cloudClient.auth.signInWithPassword({email,password});if(error)return alert(error.message);closeModal()}
+async function signUpCloud(){const email=authEmail.value.trim(),password=authPassword.value;if(!email||password.length<6)return alert('Usa un email válido y una contraseña de al menos 6 caracteres.');const {error}=await cloudClient.auth.signUp({email,password});if(error)return alert(error.message);alert('Cuenta creada. Si tu proyecto pide confirmación por email, revisa tu correo.');closeModal()}
+async function signOutCloud(){if(cloudClient)await cloudClient.auth.signOut();closeModal()}
+function money(n){return '$'+Number(n||0).toFixed(2)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function show(id,btn){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');render()}
+function openModal(title,body){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function openBusiness(){
+const b=data.business||{};
+openModal('Datos de tu negocio',`<label>Nombre del negocio</label><input id="bname" value="${esc(b.name)}" placeholder="Ej. Jardines Pérez">
+<label>Teléfono</label><input id="bphone" value="${esc(b.phone)}" placeholder="(555) 555-5555">
+<label>Email</label><input id="bemail" value="${esc(b.email)}" placeholder="correo@ejemplo.com">
+<label>Dirección</label><input id="baddress" value="${esc(b.address)}" placeholder="Ciudad, Estado">
+<div class="actions"><button class="primary" onclick="saveBusiness()">Guardar</button></div>`)
+}
+function saveBusiness(){
+data.business={name:bname.value.trim()||'Mi Jardín',phone:bphone.value.trim(),email:bemail.value.trim(),address:baddress.value.trim()};
+closeModal();save();
+}
+async function generatePDF(index,share=false){
+const q=data.quotes[index];
+if(!q)return;
+if(!window.jspdf){alert('No se pudo cargar el generador de PDF. Comprueba tu conexión a internet e inténtalo de nuevo.');return}
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+const b=data.business||{name:'Mi Jardín',phone:'',email:'',address:''};
+const green=[47,125,74], dark=[25,51,37], gray=[105,123,112];
+
+doc.setFillColor(...green); doc.rect(0,0,210,34,'F');
+doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
+doc.text(b.name||'Mi Jardín',16,16);
+doc.setFontSize(10); doc.setFont(undefined,'normal');
+doc.text('PRESUPUESTO',16,25);
+
+doc.setTextColor(...dark); doc.setFontSize(10);
+doc.text(`Fecha: ${q.date}`,145,47);
+doc.text(`Estado: ${q.status}`,145,53);
+
+doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.text('Datos del cliente',16,48);
+doc.setFont(undefined,'normal'); doc.setFontSize(10);
+doc.text(q.client,16,56);
+doc.setTextColor(...gray);
+if(b.phone)doc.text(b.phone,16,63);
+if(b.email)doc.text(b.email,16,70);
+if(b.address)doc.text(b.address,16,77);
+
+doc.setTextColor(...dark); doc.setFontSize(13); doc.setFont(undefined,'bold');
+doc.text('Detalle del servicio',16,94);
+
+const items=q.items||[{name:q.service,qty:q.qty||1,price:(q.subtotal||q.total)/(q.qty||1),total:q.subtotal||q.total}];
+const subtotal=q.subtotal??q.total;
+const discount=q.discount??0;
+const tax=q.tax??0;
+doc.autoTable({
+startY:100,
+head:[['Servicio','Cantidad','Precio','Total']],
+body:items.map(x=>[x.name,String(x.qty),money(x.price),money(x.total)]),
+theme:'grid',headStyles:{fillColor:green,textColor:255},styles:{fontSize:10,cellPadding:5}
+});
+let y=doc.lastAutoTable.finalY+15;
+doc.setFontSize(10);doc.setTextColor(...gray);
+doc.text(`Subtotal: ${money(subtotal)}`,140,y,{align:'right'});
+doc.text(`Descuento (${q.discountPct||0}%): -${money(discount)}`,140,y+7,{align:'right'});
+doc.text(`Impuesto (${q.taxPct||0}%): ${money(tax)}`,140,y+14,{align:'right'});
+doc.setFontSize(15);doc.setFont(undefined,'bold');doc.setTextColor(...dark);
+doc.text(`TOTAL: ${money(q.total)}`,194,y+25,{align:'right'});
+
+doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(...gray);
+doc.text('Notas y condiciones',16,y+42);
+doc.setTextColor(...dark);
+doc.text('Este presupuesto es una estimación y puede ajustarse si cambian las condiciones del trabajo.',16,y+50);
+if(q.notes){doc.text(q.notes,16,y+58,{maxWidth:175});}else{doc.text('Gracias por la oportunidad de trabajar en su jardín.',16,y+58);}
+
+doc.setDrawColor(220,231,223);doc.line(16,270,194,270);
+doc.setFontSize(9);doc.setTextColor(...gray);
+doc.text(`${b.name||'Mi Jardín'} · ${b.phone||''} ${b.email?'· '+b.email:''}`,16,278);
+const filename=`presupuesto-${String(q.client).replace(/[^a-z0-9áéíóúñ ]/gi,'').trim().replace(/\s+/g,'-')||'cliente'}.pdf`;
+if(share && navigator.share){
+  const blob=doc.output('blob');
+  const file=new File([blob],filename,{type:'application/pdf'});
+  try{ if(!navigator.canShare || navigator.canShare({files:[file]})){ await navigator.share({title:`Presupuesto — ${q.client}`,text:`Presupuesto de ${b.name||'Mi Jardín'}`,files:[file]}); return; } }catch(e){ if(e.name==='AbortError') return; }
+}
+doc.save(filename);
+}
+
+function searchLeads(){const area=document.getElementById('leadArea')?.value.trim();const type=document.getElementById('leadSearchType')?.value||'landscaping';if(!area)return alert('Escribe tu ciudad o código postal para buscar en esa zona.');window.open('https://www.google.com/maps/search/'+encodeURIComponent(type+' near '+area),'_blank','noopener');}
+function searchLocalAds(){const area=document.getElementById('leadArea')?.value.trim()||'mi ciudad';window.open('https://www.google.com/search?q='+encodeURIComponent('cómo anunciar servicios de jardinería local en '+area),'_blank','noopener');}
+function advanceLead(i){const flow=['Nuevo','Contactado','Visita programada','Presupuesto enviado','Ganado','Perdido'];const l=data.leads[i];if(!l)return;const current=flow.indexOf(l.status);l.status=flow[(current+1+flow.length)%flow.length];save();}
+function leadWhatsApp(i){const l=data.leads[i];if(!l)return;if(!l.phone)return alert('Añade el teléfono del prospecto primero.');const phone=l.phone.replace(/[^0-9]/g,'');const msg=`Hola ${l.name}, soy ${data.business?.name||'Mi Jardín'}. Ofrezco servicios de jardinería y quería saber si puedo ayudarte con ${l.service||'el cuidado de tu jardín'}. ¿Te interesaría recibir un presupuesto sin compromiso?`;window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank','noopener');}
+function sendWhatsApp(index){
+ const q=data.quotes[index]; if(!q)return;
+ const client=(data.clients||[]).find(c=>String(c.name).trim().toLowerCase()===String(q.client).trim().toLowerCase());
+ const phone=(client?.phone||'').replace(/[^0-9+]/g,'');
+ const msg=`Hola ${q.client}, te envío el presupuesto de ${data.business?.name||'Mi Jardín'}.\n\nTotal: ${money(q.total)}\n\nPuedo enviarte el PDF del presupuesto por este mismo medio. Gracias.`;
+ const url=phone?`https://wa.me/${phone.replace(/^00/,'') }?text=${encodeURIComponent(msg)}`:`https://wa.me/?text=${encodeURIComponent(msg)}`;
+ window.open(url,'_blank','noopener');
+}
+
+function openPrice(){
+openModal('Añadir servicio',`<label>Servicio</label><input id="pname" placeholder="Ej. Limpieza de jardín"><label>Unidad</label><input id="punit" placeholder="hora, visita, pie²..."><label>Precio base ($)</label><input id="pprice" type="number" step=".01" placeholder="0"><div class="actions"><button class="primary" onclick="addPrice()">Guardar</button></div>`)
+}
+function addPrice(){let n=pname.value.trim(),u=punit.value.trim(),p=+pprice.value;if(!n||!p)return alert('Completa servicio y precio.');data.prices.push({name:n,unit:u||'servicio',price:p});closeModal();save()}
+function openClient(){
+openModal('Nuevo cliente',`<div class="formgrid"><div><label>Nombre</label><input id="cname"></div><div><label>Teléfono</label><input id="cphone"></div><div class="full"><label>Email</label><input id="cemail" type="email"></div><div class="full"><label>Dirección</label><input id="caddr"></div></div><div class="actions"><button class="primary" onclick="addClient()">Guardar</button></div>`)
+}
+function addClient(){let n=cname.value.trim();if(!n)return alert('Escribe un nombre.');data.clients.push({name:n,phone:cphone.value,email:cemail.value,address:caddr.value});closeModal();save()}
+function openLead(){
+openModal('Nuevo prospecto',`<div class="formgrid"><div><label>Nombre</label><input id="lname"></div><div><label>Teléfono</label><input id="lphone"></div><div><label>Fuente</label><select id="lsource"><option>Recomendación</option><option>Facebook / Instagram</option><option>Google</option><option>Volante</option><option>Otro</option></select></div><div><label>Servicio que busca</label><input id="lservice" placeholder="Mantenimiento, poda..."></div><div class="full"><label>Notas</label><textarea id="lnote"></textarea></div></div><div class="actions"><button class="primary" onclick="addLead()">Guardar</button></div>`)
+}
+function addLead(){let n=lname.value.trim();if(!n)return alert('Escribe un nombre.');data.leads.push({name:n,phone:lphone.value,source:lsource.value,service:lservice.value,note:lnote.value,status:'Nuevo'});closeModal();save()}
+let quoteItems=[];
+function openQuote(){
+quoteItems=[{priceIndex:0,qty:1}];
+const opts=data.prices.map((p,i)=>`<option value="${i}">${esc(p.name)} — ${money(p.price)}/${esc(p.unit)}</option>`).join('');
+openModal('Nuevo presupuesto',`
+<label>Cliente</label><input id="qclient" placeholder="Nombre del cliente">
+<div class="title" style="margin-top:18px"><h2 style="font-size:16px">Servicios y materiales</h2><button class="secondary" onclick="addQuoteItem()">＋ Añadir</button></div>
+<div id="quoteItems"></div>
+<div class="formgrid">
+<div><label>Descuento (%)</label><input id="qdiscount" type="number" min="0" value="0" oninput="calcQuote()"></div>
+<div><label>Impuesto (%)</label><input id="qtax" type="number" min="0" value="${data.business?.tax||0}" oninput="calcQuote()"></div>
+</div>
+<div class="card" style="margin-top:14px">
+<div class="row"><span class="muted">Subtotal</span><b id="qsubtotal">$0.00</b></div>
+<div class="row"><span class="muted">Descuento</span><b id="qdiscountValue">$0.00</b></div>
+<div class="row"><span class="muted">Impuesto</span><b id="qtaxValue">$0.00</b></div>
+<hr>
+<div class="row"><span><b>Total</b></span><span class="price" id="qtotal">$0.00</span></div>
+</div>
+<label>Notas / condiciones</label><textarea id="qnotes" placeholder="Ej. El precio incluye mano de obra y materiales..."></textarea>
+<div class="actions"><button class="primary" onclick="addQuote()">Guardar presupuesto</button></div>`);
+renderQuoteItems(); calcQuote();
+}
+function calcQuote(){
+let subtotal=quoteItems.reduce((sum,it)=>{const p=data.prices[it.priceIndex];return sum+(p?p.price*(+it.qty||0):0)},0);
+let discountPct=+document.getElementById('qdiscount')?.value||0;
+let taxPct=+document.getElementById('qtax')?.value||0;
+let discount=subtotal*discountPct/100, taxable=subtotal-discount, tax=taxable*taxPct/100,total=taxable+tax;
+if(document.getElementById('qsubtotal'))document.getElementById('qsubtotal').textContent=money(subtotal);
+if(document.getElementById('qdiscountValue'))document.getElementById('qdiscountValue').textContent='-'+money(discount);
+if(document.getElementById('qtaxValue'))document.getElementById('qtaxValue').textContent=money(tax);
+if(document.getElementById('qtotal'))document.getElementById('qtotal').textContent=money(total);
+return {subtotal,discountPct,discount,taxPct,tax,total};
+}
+
+function renderQuoteItems(){
+const box=document.getElementById('quoteItems'); if(!box)return;
+box.innerHTML=quoteItems.map((it,i)=>{
+const opts=data.prices.map((p,j)=>`<option value="${j}" ${j===it.priceIndex?'selected':''}>${esc(p.name)} — ${money(p.price)}/${esc(p.unit)}</option>`).join('');
+return `<div class="card" style="padding:12px"><div class="formgrid">
+<div class="full"><label>Servicio / material</label><select onchange="quoteItems[${i}].priceIndex=+this.value;calcQuote()">${opts}</select></div>
+<div><label>Cantidad</label><input type="number" min="0" step=".1" value="${it.qty}" oninput="quoteItems[${i}].qty=+this.value||0;calcQuote()"></div>
+<div style="display:flex;align-items:end"><button class="danger" style="width:100%" onclick="removeQuoteItem(${i})">Eliminar</button></div>
+</div></div>`}).join('');
+}
+function addQuoteItem(){quoteItems.push({priceIndex:0,qty:1});renderQuoteItems();calcQuote()}
+function removeQuoteItem(i){if(quoteItems.length===1)return;quoteItems.splice(i,1);renderQuoteItems();calcQuote()}
+function addQuote(){
+let client=qclient.value.trim();
+if(!client)return alert('Escribe el cliente.');
+if(!quoteItems.length)return alert('Añade al menos un servicio.');
+const calc=calcQuote();
+const items=quoteItems.map(it=>{const p=data.prices[it.priceIndex];return {name:p.name,unit:p.unit,price:p.price,qty:+it.qty||0,total:p.price*(+it.qty||0)}});
+data.quotes.push({client,items,service:items.map(x=>x.name).join(', '),qty:items.reduce((a,x)=>a+x.qty,0),subtotal:calc.subtotal,discountPct:calc.discountPct,discount:calc.discount,taxPct:calc.taxPct,tax:calc.tax,total:calc.total,notes:qnotes.value,status:'Borrador',date:new Date().toLocaleDateString()});
+closeModal();save();
+}
+function render(){
+statQuotes.textContent=money(data.quotes.reduce((a,q)=>a+q.total,0));statClients.textContent=data.clients.length;statLeads.textContent=data.leads.length;
+priceList.innerHTML=data.prices.length?data.prices.map((p,i)=>`<div class="card service"><div><b>${esc(p.name)}</b><div class="muted">Por ${esc(p.unit)}</div></div><div class="price">${money(p.price)}</div></div>`).join(''):'<div class="list-empty">Añade tu primer servicio.</div>';
+quoteList.innerHTML=data.quotes.length?data.quotes.slice().reverse().map((q,rev)=>{let i=data.quotes.length-1-rev;return `<div class="card"><div class="row"><div><b>${esc(q.client)}</b><div class="muted">${esc(q.service)} · ${q.items?.length||1} conceptos · ${q.date}</div></div><span class="badge">${esc(q.status)}</span></div><div class="muted" style="margin-top:7px">Subtotal ${money(q.subtotal??q.total)} · Descuento ${q.discountPct||0}% · Impuesto ${q.taxPct||0}%</div><div class="row" style="margin-top:10px"><div class="price">${money(q.total)}</div><div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="secondary" onclick="generatePDF(${i},true)">📤 Compartir PDF</button><button class="secondary" onclick="generatePDF(${i},false)">📄 Guardar PDF</button><button class="primary" onclick="sendWhatsApp(${i})">💬 WhatsApp</button></div></div></div>`}).join(''):'<div class="list-empty">Todavía no hay presupuestos.</div>';
+
+clientList.innerHTML=data.clients.length?data.clients.slice().reverse().map(c=>`<div class="card"><b>${esc(c.name)}</b><div class="muted">📞 ${esc(c.phone||'Sin teléfono')} · ${esc(c.email||'Sin email')}</div><div class="muted">📍 ${esc(c.address||'Sin dirección')}</div></div>`).join(''):'<div class="list-empty">Todavía no hay clientes.</div>';
+leadList.innerHTML=data.leads.length?data.leads.map((l,i)=>({l,i})).reverse().map(({l,i})=>`<div class="card lead ${l.status==='Nuevo'?'new':''}"><div class="row"><div><b>${esc(l.name)}</b><div class="muted">${esc(l.service||'Servicio no definido')} · ${esc(l.source)}</div></div><span class="badge ${l.status==='Nuevo'?'gold':''}">${esc(l.status)}</span></div><div class="muted" style="margin-top:8px">📞 ${esc(l.phone||'Sin teléfono')}</div>${l.note?`<p class="muted">${esc(l.note)}</p>`:''}<div class="actions"><button class="secondary" onclick="advanceLead(${i})">Actualizar estado</button><button class="primary" onclick="leadWhatsApp(${i})">💬 Contactar por WhatsApp</button></div></div>`).join(''):'<div class="list-empty">Añade prospectos que lleguen por teléfono, redes o recomendaciones.</div>';
+}
+render();
+initCloud().catch(()=>setSyncStatus('⚠️ Nube no disponible'));
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+</script>
+</body>
+</html>
